@@ -45,6 +45,13 @@ namespace ratgdo {
         (UNKNOWN, 2))
     LockState lock_state_toggle(LockState state);
 
+    /// Enum for all states the TTC hold open can be in.
+    ENUM(HoldState, uint8_t,
+        (HOLD_DISABLED, 0),
+        (HOLD_ENABLED, 1),
+        (UNKNOWN, 2))
+    HoldState hold_state_toggle(HoldState state);
+
     /// MotionState for all states a the motion can be in.
     ENUM(MotionState, uint8_t,
         (CLEAR, 0),
@@ -122,6 +129,17 @@ namespace ratgdo {
         (NO, 0),
         (YES, 1))
 #endif
+
+    /// Enum for TTC lifecycle states (from extended status).
+    ENUM(TTCState, uint8_t,
+        (OFF, 0),
+        (HOLD, 1),
+        (ACTIVE, 2),
+        (WARNING, 3),
+        (CLOSING, 4),
+        (INTERRUPTED, 5),
+        (OBSTRUCTED, 6),
+        (UNKNOWN, 7))
 
     struct Openings {
         uint16_t count;

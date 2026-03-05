@@ -42,6 +42,11 @@ namespace ratgdo {
                 this->publish_state(value);
             });
             break;
+        case RATGDOSensorType::RATGDO_TTC_COUNTDOWN:
+            this->parent_->subscribe_ttc_countdown([this](uint16_t value) {
+                this->publish_state(value);
+            });
+            break;
         case RATGDOSensorType::RATGDO_DISTANCE:
 #ifdef RATGDO_USE_DISTANCE_SENSOR
             this->distance_sensor_.setI2cDevice(&I2C);
@@ -86,6 +91,9 @@ namespace ratgdo {
             break;
         case RATGDOSensorType::RATGDO_PAIRED_ACCESSORIES:
             ESP_LOGCONFIG(TAG, "  Type: Paired Accessories");
+            break;
+        case RATGDOSensorType::RATGDO_TTC_COUNTDOWN:
+            ESP_LOGCONFIG(TAG, "  Type: TTC Countdown");
             break;
         case RATGDOSensorType::RATGDO_DISTANCE:
             ESP_LOGCONFIG(TAG, "  Type: Distance");

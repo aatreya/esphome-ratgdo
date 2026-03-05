@@ -94,6 +94,14 @@ namespace ratgdo {
                 this->query_paired_devices(PairedDevice::ACCESSORY);
                 synced = false;
             }
+            if (*this->ratgdo_->hold_state == HoldState::UNKNOWN) {
+                this->query_ext_status();
+                synced = false;
+            }
+            if (*this->ratgdo_->ttc_duration == 0 && *this->ratgdo_->hold_state != HoldState::UNKNOWN) {
+                this->query_ttc_duration();
+                // don't set synced=false for TTC duration, it may legitimately be 0
+            }
 
             if (synced) {
                 return;
@@ -171,6 +179,14 @@ namespace ratgdo {
                 this->activate_learn();
             } else if (args.tag == Tag::inactivate_learn) {
                 this->inactivate_learn();
+            } else if (args.tag == Tag::set_ttc) {
+                this->set_ttc(args.value.set_ttc.seconds);
+            } else if (args.tag == Tag::cancel_ttc) {
+                this->cancel_ttc(args.value.cancel_ttc.data);
+            } else if (args.tag == Tag::query_ttc_duration) {
+                this->query_ttc_duration();
+            } else if (args.tag == Tag::query_ext_status) {
+                this->query_ext_status();
             }
             return { };
         }
@@ -299,7 +315,7 @@ namespace ratgdo {
                     if (byte_count == PACKET_LENGTH) {
                         reading_msg = false;
                         byte_count = 0;
-                        this->print_packet(LOG_STR("Received packet: "), rx_packet);
+                        this->print_packet(LOG_STR("Received packet"), rx_packet);
                         return this->decode_packet(rx_packet);
                     }
                 }
@@ -398,7 +414,11 @@ namespace ratgdo {
             } else if (cmd.type == CommandType::OPENINGS) {
                 this->ratgdo_->received(Openings { static_cast<uint16_t>((cmd.byte1 << 8) | cmd.byte2), cmd.nibble });
             } else if (cmd.type == CommandType::SET_TTC) {
-                this->ratgdo_->received(TimeToClose { static_cast<uint16_t>((cmd.byte1 << 8) | cmd.byte2) });
+                auto requested = static_cast<uint16_t>((cmd.byte1 << 8) | cmd.byte2);
+                ESP_LOGD(TAG, "SET_TTC from wall panel: %ds (query GDO for accepted value)", requested);
+                // Don't update ttc_duration — this is the wall panel's request, not GDO confirmation.
+                // Query the GDO for the actual accepted value.
+                this->scheduler_->set_timeout(this->ratgdo_, "", 500, [this] { this->query_ttc_duration(); });
             } else if (cmd.type == CommandType::PAIRED_DEVICES) {
                 PairedDeviceCount pdc;
                 pdc.kind = to_PairedDevice(cmd.nibble, PairedDevice::UNKNOWN);
@@ -416,6 +436,58 @@ namespace ratgdo {
                 this->ratgdo_->received(pdc);
             } else if (cmd.type == CommandType::BATTERY_STATUS) {
                 this->ratgdo_->received(to_BatteryState(cmd.byte1, BatteryState::UNKNOWN));
+            } else if (cmd.type == CommandType::TTC_DURATION) {
+                auto duration = static_cast<uint16_t>((cmd.byte1 << 8) | cmd.byte2);
+                ESP_LOGD(TAG, "TTC duration: %ds", duration);
+                this->ratgdo_->received(TimeToClose { duration });
+            } else if (cmd.type == CommandType::TTC_COUNTDOWN) {
+                auto countdown = static_cast<uint16_t>((cmd.byte1 << 8) | cmd.byte2);
+                ESP_LOGD(TAG, "TTC countdown: %ds remaining", countdown);
+                this->ratgdo_->ttc_countdown = countdown;
+                if (countdown > 0) {
+                    this->ratgdo_->ttc_state = TTCState::ACTIVE;
+                }
+            } else if (cmd.type == CommandType::CANCEL_TTC) {
+                ESP_LOGD(TAG, "TTC cancel: byte2=%02x byte1=%02x nibble=%02x", cmd.byte2, cmd.byte1, cmd.nibble);
+                this->ratgdo_->ttc_countdown = 0;
+                this->query_ext_status();
+            } else if (cmd.type == CommandType::EXT_STATUS) {
+                ESP_LOGD(TAG, "Extended status: byte1=%02x byte2=%02x nibble=%02x", cmd.byte1, cmd.byte2, cmd.nibble);
+                if (cmd.byte1 == 0x01) {
+                    ESP_LOGD(TAG, "EXT_STATUS: wall panel ack, hold disabled");
+                    this->ratgdo_->received(HoldState::HOLD_DISABLED);
+                } else if (cmd.byte1 == 0x02) {
+                    ESP_LOGD(TAG, "EXT_STATUS: update ack, hold disabled");
+                    this->ratgdo_->received(HoldState::HOLD_DISABLED);
+                } else if (cmd.byte1 == 0x09) {
+                    ESP_LOGD(TAG, "EXT_STATUS: TTC disabled");
+                    this->ratgdo_->received(HoldState::HOLD_DISABLED);
+                    this->ratgdo_->received(TimeToClose { 0 });
+                    this->ratgdo_->ttc_countdown = 0;
+                    this->ratgdo_->ttc_state = TTCState::OFF;
+                } else if (cmd.byte1 == 0x0a) {
+                    ESP_LOGD(TAG, "EXT_STATUS: hold enabled");
+                    this->ratgdo_->received(HoldState::HOLD_ENABLED);
+                    this->ratgdo_->ttc_countdown = 0;
+                    this->ratgdo_->ttc_state = TTCState::HOLD;
+                } else if (cmd.byte1 == 0x0b) {
+                    ESP_LOGD(TAG, "EXT_STATUS: TTC warning, door closing soon");
+                    this->ratgdo_->ttc_state = TTCState::WARNING;
+                } else if (cmd.byte1 == 0x0c) {
+                    ESP_LOGD(TAG, "EXT_STATUS: TTC enabled/active");
+                    this->ratgdo_->received(HoldState::HOLD_DISABLED);
+                    this->ratgdo_->ttc_state = TTCState::ACTIVE;
+                } else if (cmd.byte1 == 0x0d) {
+                    ESP_LOGD(TAG, "EXT_STATUS: TTC close interrupted (user)");
+                    this->ratgdo_->ttc_countdown = 0;
+                    this->ratgdo_->ttc_state = TTCState::INTERRUPTED;
+                } else if (cmd.byte1 == 0x0e) {
+                    ESP_LOGD(TAG, "EXT_STATUS: TTC close interrupted (obstruction)");
+                    this->ratgdo_->ttc_countdown = 0;
+                    this->ratgdo_->ttc_state = TTCState::OBSTRUCTED;
+                } else {
+                    ESP_LOGW(TAG, "EXT_STATUS: unhandled byte1=%02x", cmd.byte1);
+                }
             }
 
             ESP_LOG1(TAG, "Done handle command: %s", LOG_STR_ARG(CommandType_to_string(cmd.type)));
@@ -491,6 +563,28 @@ namespace ratgdo {
             this->transmit_pending_start_ = 0;
             this->on_command_sent_.trigger();
             return true;
+        }
+
+        void Secplus2::set_ttc(uint16_t seconds)
+        {
+            ESP_LOGD(TAG, "Set TTC: %ds", seconds);
+            this->send_command(Command(CommandType::SET_TTC, 1, (seconds >> 8) & 0xFF, seconds & 0xFF));
+        }
+
+        void Secplus2::cancel_ttc(uint32_t data)
+        {
+            ESP_LOGD(TAG, "Cancel TTC: data=%06x", data);
+            this->send_command(Command(CommandType::CANCEL_TTC, data & 0xFF, (data >> 8) & 0xFF, (data >> 16) & 0xFF));
+        }
+
+        void Secplus2::query_ttc_duration()
+        {
+            this->send_command(Command(CommandType::TTC_GET_DURATION, 1));
+        }
+
+        void Secplus2::query_ext_status()
+        {
+            this->send_command(Command(CommandType::GET_EXT_STATUS, 1));
         }
 
         void Secplus2::increment_rolling_code_counter(int delta)

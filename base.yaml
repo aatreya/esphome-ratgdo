@@ -21,6 +21,12 @@ text_sensor:
   - platform: version
     id: ${id_prefix}_firmware_version
     name: "Firmware Version"
+  - platform: ratgdo
+    id: ${id_prefix}_ttc_state
+    type: ttc_state
+    name: "TTC State"
+    icon: mdi:timer-alert-outline
+    entity_category: diagnostic
 
 ratgdo:
   id: ${id_prefix}
@@ -64,6 +70,13 @@ sensor:
     entity_category: diagnostic
     name: "Paired Devices"
     icon: mdi:remote
+  - platform: ratgdo
+    id: ${id_prefix}_ttc_countdown
+    type: ttc_countdown
+    entity_category: diagnostic
+    name: "TTC Countdown"
+    unit_of_measurement: "s"
+    icon: mdi:timer-sand
 
 lock:
   - platform: ratgdo
@@ -94,6 +107,11 @@ switch:
     type: learn
     name: "Learn"
     icon: mdi:plus-box
+    entity_category: config
+  - platform: ratgdo
+    id: ${id_prefix}_ttc_hold
+    type: ttc_hold
+    name: "TTC Hold Open"
     entity_category: config
 
 binary_sensor:
@@ -223,6 +241,13 @@ number:
     name: "Client ID"
     mode: box
 
+  - platform: ratgdo
+    id: ${id_prefix}_time_to_close
+    type: time_to_close
+    entity_category: config
+    name: "Time to close"
+    unit_of_measurement: "s"
+
 cover:
   - platform: ratgdo
     id: ${id_prefix}_garage_door
@@ -273,6 +298,24 @@ button:
       then:
         lambda: !lambda |-
           id($id_prefix).sync();
+
+  - platform: template
+    id: ${id_prefix}_query_ttc_duration
+    name: "Query TTC duration"
+    entity_category: diagnostic
+    on_press:
+      then:
+        lambda: !lambda |-
+          id($id_prefix).query_ttc_duration();
+
+  - platform: template
+    id: ${id_prefix}_query_ext_status
+    name: "Query extended status"
+    entity_category: diagnostic
+    on_press:
+      then:
+        lambda: !lambda |-
+          id($id_prefix).query_ext_status();
 
   - platform: template
     id: ${id_prefix}_toggle_door

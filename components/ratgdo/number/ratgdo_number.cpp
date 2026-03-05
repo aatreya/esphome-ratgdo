@@ -45,6 +45,9 @@ namespace ratgdo {
             ESP_LOGCONFIG(TAG, " Type: Target Distance Measurement");
             break;
 #endif
+        case RATGDO_TIME_TO_CLOSE:
+            ESP_LOGCONFIG(TAG, "  Type: Time To Close");
+            break;
         default:
             break;
         }
@@ -52,6 +55,17 @@ namespace ratgdo {
 
     void RATGDONumber::setup()
     {
+        // TTC duration is not persisted to flash — the GDO is the source of truth,
+        // queried during sync. Skip flash load and control() to avoid sending
+        // unwanted commands to the GDO on startup.
+        if (this->number_type_ == RATGDO_TIME_TO_CLOSE) {
+            this->publish_state(0);
+            this->parent_->subscribe_ttc_duration([this](uint16_t value) {
+                this->update_state(value);
+            });
+            return;
+        }
+
         float value;
         this->pref_ = this->make_entity_preference<float>();
         if (!this->pref_.load(&value)) {
@@ -138,6 +152,11 @@ namespace ratgdo {
             this->traits.set_max_value(3500);
             break;
 #endif
+        case RATGDO_TIME_TO_CLOSE:
+            this->traits.set_step(1);
+            this->traits.set_min_value(0);
+            this->traits.set_max_value(65535);
+            break;
         default:
             break;
         }
@@ -148,7 +167,9 @@ namespace ratgdo {
         if (value == this->state) {
             return;
         }
-        this->pref_.save(&value);
+        if (this->number_type_ != RATGDO_TIME_TO_CLOSE) {
+            this->pref_.save(&value);
+        }
         this->publish_state(value);
     }
 
@@ -178,6 +199,16 @@ namespace ratgdo {
             this->parent_->set_target_distance_measurement(value);
             break;
 #endif
+        case RATGDO_TIME_TO_CLOSE:
+            if (static_cast<uint16_t>(value) > 0) {
+                this->parent_->set_ttc_seconds(static_cast<uint16_t>(value));
+            } else {
+                this->parent_->ttc_off();
+            }
+            // Don't call update_state here — the GDO is the source of truth.
+            // set_ttc_seconds/ttc_off set ttc_duration optimistically, and the
+            // GDO's response (or a query) corrects via the observable chain.
+            return;
         default:
             break;
         }

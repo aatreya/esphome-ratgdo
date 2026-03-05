@@ -31,6 +31,19 @@ namespace ratgdo {
         }
     }
 
+    HoldState hold_state_toggle(HoldState state)
+    {
+        switch (state) {
+        case HoldState::HOLD_DISABLED:
+            return HoldState::HOLD_ENABLED;
+        case HoldState::HOLD_ENABLED:
+            return HoldState::HOLD_DISABLED;
+        case HoldState::UNKNOWN:
+        default:
+            return HoldState::UNKNOWN;
+        }
+    }
+
     LearnState learn_state_toggle(LearnState state)
     {
         switch (state) {

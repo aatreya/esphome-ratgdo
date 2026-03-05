@@ -22,7 +22,8 @@ namespace ratgdo {
         RATGDO_PAIRED_KEYPADS,
         RATGDO_PAIRED_WALL_CONTROLS,
         RATGDO_PAIRED_ACCESSORIES,
-        RATGDO_DISTANCE
+        RATGDO_DISTANCE,
+        RATGDO_TTC_COUNTDOWN
     };
 
     class RATGDOSensor : public sensor::Sensor, public RATGDOClient, public Component {

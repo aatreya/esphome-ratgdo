@@ -24,6 +24,7 @@ TYPES = {
     "paired_devices_wall_controls": RATGDOSensorType.RATGDO_PAIRED_WALL_CONTROLS,
     "paired_devices_accessories": RATGDOSensorType.RATGDO_PAIRED_ACCESSORIES,
     "distance": RATGDOSensorType.RATGDO_DISTANCE,
+    "ttc_countdown": RATGDOSensorType.RATGDO_TTC_COUNTDOWN,
 }
 
 

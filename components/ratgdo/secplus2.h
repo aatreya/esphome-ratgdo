@@ -33,8 +33,8 @@ namespace ratgdo {
             (OBST_1, 0x084), // sent when an obstruction happens?
             (OBST_2, 0x085), // sent when an obstruction happens?
             (BATTERY_STATUS, 0x09d),
-            (PAIR_3, 0x0a0),
-            (PAIR_3_RESP, 0x0a1),
+            (GET_EXT_STATUS, 0x0a0),
+            (EXT_STATUS, 0x0a1),
 
             (LEARN, 0x181),
             (LOCK, 0x18c),
@@ -51,11 +51,11 @@ namespace ratgdo {
             (PING, 0x392),
             (PING_RESP, 0x393),
 
-            (PAIR_2, 0x400),
-            (PAIR_2_RESP, 0x401),
+            (TTC_GET_DURATION, 0x400),
+            (TTC_DURATION, 0x401),
             (SET_TTC, 0x402), // ttc_in_seconds = (byte1<<8)+byte2
-            (CANCEL_TTC, 0x408), // ?
-            (TTC, 0x40a), // Time to close
+            (CANCEL_TTC, 0x408),
+            (TTC_COUNTDOWN, 0x40a), // Time to close countdown
             (GET_OPENINGS, 0x48b),
             (OPENINGS, 0x48c), // openings = (byte1<<8)+byte2
         )
@@ -131,6 +131,11 @@ namespace ratgdo {
             void clear_paired_devices(PairedDevice kind);
             void activate_learn();
             void inactivate_learn();
+
+            void set_ttc(uint16_t seconds);
+            void cancel_ttc(uint32_t data);
+            void query_ttc_duration();
+            void query_ext_status();
 
             void print_packet(const esphome::LogString* prefix, const WirePacket& packet) const;
             optional<Command> decode_packet(const WirePacket& packet) const;

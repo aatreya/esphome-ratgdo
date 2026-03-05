@@ -91,6 +91,10 @@ namespace ratgdo {
         DEFER_BUTTON_STATE,
         DEFER_MOTION_STATE,
         DEFER_LEARN_STATE,
+        DEFER_TTC_DURATION,
+        DEFER_TTC_COUNTDOWN,
+        DEFER_HOLD_STATE,
+        DEFER_TTC_STATE,
     };
 
     static void log_subscriber_overflow(const LogString* observable_name, uint32_t max)
@@ -393,9 +397,16 @@ namespace ratgdo {
         }
     }
 
+    void RATGDOComponent::received(const HoldState hold_state)
+    {
+        ESP_LOGD(TAG, "Hold state=%s", LOG_STR_ARG(HoldState_to_string(hold_state)));
+        this->hold_state = hold_state;
+    }
+
     void RATGDOComponent::received(const TimeToClose ttc)
     {
         ESP_LOGD(TAG, "Time to close (TTC): %ds", ttc.seconds);
+        this->ttc_duration = ttc.seconds;
     }
 
     void RATGDOComponent::received(const BatteryState battery_state)
@@ -793,6 +804,59 @@ namespace ratgdo {
         this->protocol_->call(InactivateLearn { });
     }
 
+    // TTC functions
+    void RATGDOComponent::set_ttc_seconds(uint16_t seconds)
+    {
+        ESP_LOGD(TAG, "Set TTC: %ds", seconds);
+        this->ttc_duration = seconds; // optimistic update so query response can correct via observable
+        this->protocol_->call(SetTTC { seconds });
+    }
+
+    void RATGDOComponent::ttc_off()
+    {
+        ESP_LOGD(TAG, "TTC off");
+        this->ttc_duration = 0;
+        this->protocol_->call(CancelTTC { 0x000501 });
+    }
+
+    void RATGDOComponent::ttc_toggle_hold()
+    {
+        ESP_LOGD(TAG, "TTC toggle hold");
+        this->protocol_->call(CancelTTC { 0x000401 });
+    }
+
+    void RATGDOComponent::hold_enable()
+    {
+        if (*this->hold_state == HoldState::HOLD_ENABLED) {
+            return; // already enabled, no-op
+        }
+        this->ttc_toggle_hold();
+        // Optimistic update for immediate UI feedback.
+        // The GDO broadcasts EXT_STATUS with the final state on its own.
+        this->hold_state = HoldState::HOLD_ENABLED;
+    }
+
+    void RATGDOComponent::hold_disable()
+    {
+        if (*this->hold_state == HoldState::HOLD_DISABLED) {
+            return; // already disabled, no-op
+        }
+        this->ttc_toggle_hold();
+        // Optimistic update for immediate UI feedback.
+        // The GDO broadcasts EXT_STATUS with the final state on its own.
+        this->hold_state = HoldState::HOLD_DISABLED;
+    }
+
+    void RATGDOComponent::query_ttc_duration()
+    {
+        this->protocol_->call(QueryTTCDuration { });
+    }
+
+    void RATGDOComponent::query_ext_status()
+    {
+        this->protocol_->call(QueryExtStatus { });
+    }
+
     void RATGDOComponent::subscribe_rolling_code_counter(std::function<void(uint32_t)>&& f)
     {
         // change update to children is defered until after component loop
@@ -882,6 +946,22 @@ namespace ratgdo {
     void RATGDOComponent::subscribe_learn_state(std::function<void(LearnState)>&& f)
     {
         this->learn_state.subscribe([this, f = std::move(f)](LearnState state) { defer(DEFER_LEARN_STATE, [f, state] { f(state); }); });
+    }
+    void RATGDOComponent::subscribe_ttc_duration(std::function<void(uint16_t)>&& f)
+    {
+        this->ttc_duration.subscribe([this, f = std::move(f)](uint16_t state) { defer(DEFER_TTC_DURATION, [f, state] { f(state); }); });
+    }
+    void RATGDOComponent::subscribe_ttc_countdown(std::function<void(uint16_t)>&& f)
+    {
+        this->ttc_countdown.subscribe([this, f = std::move(f)](uint16_t state) { defer(DEFER_TTC_COUNTDOWN, [f, state] { f(state); }); });
+    }
+    void RATGDOComponent::subscribe_hold_state(std::function<void(HoldState)>&& f)
+    {
+        this->hold_state.subscribe([this, f = std::move(f)](HoldState state) { defer(DEFER_HOLD_STATE, [f, state] { f(state); }); });
+    }
+    void RATGDOComponent::subscribe_ttc_state(std::function<void(TTCState)>&& f)
+    {
+        this->ttc_state.subscribe([this, f = std::move(f)](TTCState state) { defer(DEFER_TTC_STATE, [f, state] { f(state); }); });
     }
     void RATGDOComponent::subscribe_door_action_delayed(std::function<void(DoorActionDelayed)>&& f)
     {

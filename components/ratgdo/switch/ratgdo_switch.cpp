@@ -17,6 +17,9 @@ namespace ratgdo {
         case SwitchType::RATGDO_LED:
             ESP_LOGCONFIG(TAG, "  Type: LED");
             break;
+        case SwitchType::RATGDO_TTC_HOLD:
+            ESP_LOGCONFIG(TAG, "  Type: TTC Hold");
+            break;
         default:
             break;
         }
@@ -38,6 +41,11 @@ namespace ratgdo {
             });
 #endif
             break;
+        case SwitchType::RATGDO_TTC_HOLD:
+            this->parent_->subscribe_hold_state([this](HoldState state) {
+                this->publish_state(state == HoldState::HOLD_ENABLED);
+            });
+            break;
         default:
             break;
         }
@@ -56,6 +64,13 @@ namespace ratgdo {
         case SwitchType::RATGDO_LED:
             this->pin_->digital_write(state);
             this->publish_state(state);
+            break;
+        case SwitchType::RATGDO_TTC_HOLD:
+            if (state) {
+                this->parent_->hold_enable();
+            } else {
+                this->parent_->hold_disable();
+            }
             break;
         default:
             break;

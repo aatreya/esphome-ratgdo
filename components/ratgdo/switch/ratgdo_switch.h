@@ -11,7 +11,8 @@ namespace ratgdo {
 
     enum SwitchType {
         RATGDO_LEARN,
-        RATGDO_LED
+        RATGDO_LED,
+        RATGDO_TTC_HOLD,
     };
 
     class RATGDOSwitch : public switch_::Switch, public RATGDOClient, public Component {

@@ -101,6 +101,10 @@ namespace ratgdo {
         single_observable<ButtonState> button_state { ButtonState::UNKNOWN };
         single_observable<MotionState> motion_state { MotionState::UNKNOWN };
         single_observable<LearnState> learn_state { LearnState::UNKNOWN };
+        single_observable<uint16_t> ttc_duration { 0 };
+        single_observable<uint16_t> ttc_countdown { 0 };
+        single_observable<HoldState> hold_state { HoldState::UNKNOWN };
+        single_observable<TTCState> ttc_state { TTCState::UNKNOWN };
 #ifdef RATGDO_USE_VEHICLE_SENSORS
         observable<VehicleDetectedState> vehicle_detected_state { VehicleDetectedState::NO };
         observable<VehicleArrivingState> vehicle_arriving_state { VehicleArrivingState::NO };
@@ -132,6 +136,7 @@ namespace ratgdo {
         void received(const ButtonState button_state);
         void received(const MotionState motion_state);
         void received(const LearnState light_state);
+        void received(const HoldState hold_state);
         void received(const Openings openings);
         void received(const TimeToClose ttc);
         void received(const PairedDeviceCount pdc);
@@ -174,6 +179,15 @@ namespace ratgdo {
         void lock_toggle();
         void lock();
         void unlock();
+
+        // TTC (Time To Close)
+        void set_ttc_seconds(uint16_t seconds);
+        void ttc_off();
+        void ttc_toggle_hold();
+        void hold_enable();
+        void hold_disable();
+        void query_ttc_duration();
+        void query_ext_status();
 
         // Learn & Paired
         void activate_learn();
@@ -233,6 +247,10 @@ namespace ratgdo {
         void subscribe_motion_state(std::function<void(MotionState)>&& f);
         void subscribe_sync_failed(std::function<void(bool)>&& f);
         void subscribe_learn_state(std::function<void(LearnState)>&& f);
+        void subscribe_ttc_duration(std::function<void(uint16_t)>&& f);
+        void subscribe_ttc_countdown(std::function<void(uint16_t)>&& f);
+        void subscribe_hold_state(std::function<void(HoldState)>&& f);
+        void subscribe_ttc_state(std::function<void(TTCState)>&& f);
         void subscribe_door_action_delayed(std::function<void(DoorActionDelayed)>&& f);
 #ifdef RATGDO_USE_DISTANCE_SENSOR
         void subscribe_distance_measurement(std::function<void(int16_t)>&& f);
