@@ -449,7 +449,7 @@ namespace ratgdo {
                 }
             } else if (cmd.type == CommandType::CANCEL_TTC) {
                 ESP_LOGD(TAG, "TTC cancel: byte2=%02x byte1=%02x nibble=%02x", cmd.byte2, cmd.byte1, cmd.nibble);
-                this->ratgdo_->ttc_countdown = 0;
+                this->ratgdo_->ttc_countdown = UINT16_MAX;
                 this->query_ext_status();
             } else if (cmd.type == CommandType::EXT_STATUS) {
                 ESP_LOGD(TAG, "Extended status: byte1=%02x byte2=%02x nibble=%02x", cmd.byte1, cmd.byte2, cmd.nibble);
@@ -463,12 +463,12 @@ namespace ratgdo {
                     ESP_LOGD(TAG, "EXT_STATUS: TTC disabled");
                     this->ratgdo_->received(HoldState::HOLD_DISABLED);
                     this->ratgdo_->received(TimeToClose { 0 });
-                    this->ratgdo_->ttc_countdown = 0;
+                    this->ratgdo_->ttc_countdown = UINT16_MAX;
                     this->ratgdo_->ttc_state = TTCState::OFF;
                 } else if (cmd.byte1 == 0x0a) {
                     ESP_LOGD(TAG, "EXT_STATUS: hold enabled");
                     this->ratgdo_->received(HoldState::HOLD_ENABLED);
-                    this->ratgdo_->ttc_countdown = 0;
+                    this->ratgdo_->ttc_countdown = UINT16_MAX;
                     this->ratgdo_->ttc_state = TTCState::HOLD;
                 } else if (cmd.byte1 == 0x0b) {
                     ESP_LOGD(TAG, "EXT_STATUS: TTC warning, door closing soon");
@@ -479,11 +479,11 @@ namespace ratgdo {
                     this->ratgdo_->ttc_state = TTCState::ACTIVE;
                 } else if (cmd.byte1 == 0x0d) {
                     ESP_LOGD(TAG, "EXT_STATUS: TTC close interrupted (user)");
-                    this->ratgdo_->ttc_countdown = 0;
+                    this->ratgdo_->ttc_countdown = UINT16_MAX;
                     this->ratgdo_->ttc_state = TTCState::INTERRUPTED;
                 } else if (cmd.byte1 == 0x0e) {
                     ESP_LOGD(TAG, "EXT_STATUS: TTC close interrupted (obstruction)");
-                    this->ratgdo_->ttc_countdown = 0;
+                    this->ratgdo_->ttc_countdown = UINT16_MAX;
                     this->ratgdo_->ttc_state = TTCState::OBSTRUCTED;
                 } else {
                     ESP_LOGW(TAG, "EXT_STATUS: unhandled byte1=%02x", cmd.byte1);

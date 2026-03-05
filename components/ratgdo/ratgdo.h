@@ -102,7 +102,7 @@ namespace ratgdo {
         single_observable<MotionState> motion_state { MotionState::UNKNOWN };
         single_observable<LearnState> learn_state { LearnState::UNKNOWN };
         single_observable<uint16_t> ttc_duration { 0 };
-        single_observable<uint16_t> ttc_countdown { 0 };
+        single_observable<uint16_t> ttc_countdown { UINT16_MAX };
         single_observable<HoldState> hold_state { HoldState::UNKNOWN };
         single_observable<TTCState> ttc_state { TTCState::UNKNOWN };
 #ifdef RATGDO_USE_VEHICLE_SENSORS

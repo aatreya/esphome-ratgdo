@@ -44,7 +44,8 @@ namespace ratgdo {
             break;
         case RATGDOSensorType::RATGDO_TTC_COUNTDOWN:
             this->parent_->subscribe_ttc_countdown([this](uint16_t value) {
-                this->publish_state(value);
+                // UINT16_MAX is a sentinel meaning "not counting" — show as Unknown in HA
+                this->publish_state(value == UINT16_MAX ? NAN : value);
             });
             break;
         case RATGDOSensorType::RATGDO_DISTANCE:

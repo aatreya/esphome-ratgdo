@@ -24,7 +24,7 @@ text_sensor:
   - platform: ratgdo
     id: ${id_prefix}_ttc_state
     type: ttc_state
-    name: "TTC State"
+    name: "Auto-close status"
     icon: mdi:timer-alert-outline
     entity_category: diagnostic
 
@@ -74,7 +74,7 @@ sensor:
     id: ${id_prefix}_ttc_countdown
     type: ttc_countdown
     entity_category: diagnostic
-    name: "TTC Countdown"
+    name: "Auto-close countdown"
     unit_of_measurement: "s"
     icon: mdi:timer-sand
 
@@ -111,7 +111,7 @@ switch:
   - platform: ratgdo
     id: ${id_prefix}_ttc_hold
     type: ttc_hold
-    name: "TTC Hold Open"
+    name: "Auto-close hold"
     entity_category: config
 
 binary_sensor:
@@ -245,7 +245,7 @@ number:
     id: ${id_prefix}_time_to_close
     type: time_to_close
     entity_category: config
-    name: "Time to close"
+    name: "Auto-close delay"
     unit_of_measurement: "s"
 
 cover:
@@ -301,7 +301,7 @@ button:
 
   - platform: template
     id: ${id_prefix}_query_ttc_duration
-    name: "Query TTC duration"
+    name: "Query auto-close delay"
     entity_category: diagnostic
     on_press:
       then:
