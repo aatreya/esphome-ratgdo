@@ -814,6 +814,15 @@ namespace ratgdo {
 
     void RATGDOComponent::ttc_off()
     {
+        // CANCEL_TTC interrupts door movement on the GDO hardware,
+        // so defer until the door is stationary.
+        if (*this->door_state == DoorState::OPENING || *this->door_state == DoorState::CLOSING) {
+            ESP_LOGD(TAG, "Deferring ttc_off until door stops moving");
+            this->on_door_state_([this](DoorState s) {
+                this->ttc_off();
+            });
+            return;
+        }
         ESP_LOGD(TAG, "TTC off");
         this->ttc_duration = 0;
         this->protocol_->call(CancelTTC { 0x000501 });
@@ -830,6 +839,15 @@ namespace ratgdo {
         if (*this->hold_state == HoldState::HOLD_ENABLED) {
             return; // already enabled, no-op
         }
+        // CANCEL_TTC interrupts door movement on the GDO hardware,
+        // so defer until the door is stationary.
+        if (*this->door_state == DoorState::OPENING || *this->door_state == DoorState::CLOSING) {
+            ESP_LOGD(TAG, "Deferring hold_enable until door stops moving");
+            this->on_door_state_([this](DoorState s) {
+                this->hold_enable();
+            });
+            return;
+        }
         this->ttc_toggle_hold();
         // Optimistic update for immediate UI feedback.
         // The GDO broadcasts EXT_STATUS with the final state on its own.
@@ -840,6 +858,15 @@ namespace ratgdo {
     {
         if (*this->hold_state == HoldState::HOLD_DISABLED) {
             return; // already disabled, no-op
+        }
+        // CANCEL_TTC interrupts door movement on the GDO hardware,
+        // so defer until the door is stationary.
+        if (*this->door_state == DoorState::OPENING || *this->door_state == DoorState::CLOSING) {
+            ESP_LOGD(TAG, "Deferring hold_disable until door stops moving");
+            this->on_door_state_([this](DoorState s) {
+                this->hold_disable();
+            });
+            return;
         }
         this->ttc_toggle_hold();
         // Optimistic update for immediate UI feedback.
