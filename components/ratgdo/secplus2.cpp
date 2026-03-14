@@ -102,6 +102,16 @@ namespace ratgdo {
                 this->query_ttc_duration();
                 // don't set synced=false for TTC duration, it may legitimately be 0
             }
+            // Derive ttc_state if EXT_STATUS didn't set it explicitly (e.g. 0x01/0x02 ack responses)
+            if (*this->ratgdo_->ttc_state == TTCState::UNKNOWN && *this->ratgdo_->hold_state != HoldState::UNKNOWN) {
+                if (*this->ratgdo_->hold_state == HoldState::HOLD_ENABLED) {
+                    this->ratgdo_->ttc_state = TTCState::HOLD;
+                } else if (*this->ratgdo_->ttc_duration > 0) {
+                    this->ratgdo_->ttc_state = TTCState::ACTIVE;
+                } else {
+                    this->ratgdo_->ttc_state = TTCState::OFF;
+                }
+            }
 
             if (synced) {
                 return;
@@ -456,11 +466,9 @@ namespace ratgdo {
                 if (cmd.byte1 == 0x01) {
                     ESP_LOGD(TAG, "EXT_STATUS: wall panel ack, hold disabled");
                     this->ratgdo_->received(HoldState::HOLD_DISABLED);
-                    this->ratgdo_->ttc_state = TTCState::ACTIVE;
                 } else if (cmd.byte1 == 0x02) {
                     ESP_LOGD(TAG, "EXT_STATUS: update ack, hold disabled");
                     this->ratgdo_->received(HoldState::HOLD_DISABLED);
-                    this->ratgdo_->ttc_state = TTCState::ACTIVE;
                 } else if (cmd.byte1 == 0x09) {
                     ESP_LOGD(TAG, "EXT_STATUS: TTC disabled");
                     this->ratgdo_->received(HoldState::HOLD_DISABLED);

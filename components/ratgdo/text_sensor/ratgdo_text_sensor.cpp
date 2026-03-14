@@ -11,10 +11,11 @@ namespace ratgdo {
     {
         switch (this->type_) {
         case RATGDOTextSensorType::RATGDO_TTC_STATE:
-            this->publish_state("UNKNOWN");
             this->parent_->subscribe_ttc_state([this](TTCState state) {
                 this->publish_state(TTCState_to_string(state));
             });
+            // Publish current value in case sync already resolved before setup()
+            this->publish_state(TTCState_to_string(*this->parent_->ttc_state));
             break;
         default:
             break;
