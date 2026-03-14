@@ -102,15 +102,11 @@ namespace ratgdo {
                 this->query_ttc_duration();
                 // don't set synced=false for TTC duration, it may legitimately be 0
             }
-            // Derive ttc_state if EXT_STATUS didn't set it explicitly (e.g. 0x01/0x02 ack responses)
+            // If hold_state resolved but ttc_state didn't (e.g. got a 0x01/0x02 ack
+            // instead of a definitive TTC status), query again.
             if (*this->ratgdo_->ttc_state == TTCState::UNKNOWN && *this->ratgdo_->hold_state != HoldState::UNKNOWN) {
-                if (*this->ratgdo_->hold_state == HoldState::HOLD_ENABLED) {
-                    this->ratgdo_->ttc_state = TTCState::HOLD;
-                } else if (*this->ratgdo_->ttc_duration > 0) {
-                    this->ratgdo_->ttc_state = TTCState::ACTIVE;
-                } else {
-                    this->ratgdo_->ttc_state = TTCState::OFF;
-                }
+                this->query_ext_status();
+                synced = false;
             }
 
             if (synced) {
