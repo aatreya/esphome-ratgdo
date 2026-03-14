@@ -456,9 +456,11 @@ namespace ratgdo {
                 if (cmd.byte1 == 0x01) {
                     ESP_LOGD(TAG, "EXT_STATUS: wall panel ack, hold disabled");
                     this->ratgdo_->received(HoldState::HOLD_DISABLED);
+                    this->ratgdo_->ttc_state = TTCState::ACTIVE;
                 } else if (cmd.byte1 == 0x02) {
                     ESP_LOGD(TAG, "EXT_STATUS: update ack, hold disabled");
                     this->ratgdo_->received(HoldState::HOLD_DISABLED);
+                    this->ratgdo_->ttc_state = TTCState::ACTIVE;
                 } else if (cmd.byte1 == 0x09) {
                     ESP_LOGD(TAG, "EXT_STATUS: TTC disabled");
                     this->ratgdo_->received(HoldState::HOLD_DISABLED);
